@@ -1,4 +1,5 @@
 var
+$bgimage = $('#bgimage .inner'),
 $userimage = $('#userimage .inner'),
 $coverimage = $('#coverimage .inner'),
 $dragger = $('#dragger'),
@@ -19,10 +20,10 @@ $(document).ready(function()
 	$("body").iealert({
 		support: 'ie9',
 		title: '您的瀏覽器太舊啦！',
-		text: '請更新您的瀏覽器，我們推薦您使用 Google Chrome',
+		text: '請更新您的瀏覽器，我們推薦您使用 Mozilla Firefox!',
 		closeBtn: false,
-		upgradeTitle: '下載 Google Chrome',
-		upgradeLink: 'http://www.google.com/chrome/'
+		upgradeTitle: '下載 Firefox',
+		upgradeLink: 'https://www.mozilla.org/firefox/download/'
 	});
 
 	// dragger
@@ -68,10 +69,9 @@ $(document).ready(function()
 	$('body').delegate('input[name=template]', 'change', function(){
 		var
 		width,
-		value = $(this).val(),
-		url = 'images/object/' + value + '.png';
-
-		$coverimage.css('background-image', 'url(' + url + ')');
+		value = $(this).val();
+		$bgimage.css('background-image', 'url(images/background/' + value + '.png)');
+		$coverimage.css('background-image', 'url(images/object/' + value + '.png)');
 		if($userimage.hasClass('dragged') == true) $userimage.attr('class', 'inner dragged');
 		else $userimage.attr('class', 'inner');
 
@@ -121,6 +121,9 @@ $(window).konami({
 });
 
 function createImage(template, source, x, y, w, h){
+	var bg = new Image();
+	bg.src = 'images/background/' + template + '.png';
+
 	var cover = new Image();
 	cover.src = 'images/object/' + template + '.png';
 
@@ -133,8 +136,9 @@ function createImage(template, source, x, y, w, h){
 
 	var ctx = resize_canvas.getContext("2d");
 	ctx.rect(0, 0, 500, 500);
-	ctx.fillStyle = "#CCCCCC";
+	ctx.fillStyle = "#ffffff";
 	ctx.fill();
+	ctx.drawImage(bg, 0, 0, 500, 500);
 	ctx.drawImage(userimage, x, y, w, h);
 	ctx.drawImage(cover, 0, 0, 500, 500);
 
@@ -199,14 +203,39 @@ function loadImage(files) {
 	function createImage() {
 		img = new Image();
 		img.onload = imageLoaded;
+		img.style = 'filter: contrast(1.75)';
 		img.src = fr.result;
 	}
 	function imageLoaded() {
 		var canvas = document.getElementById("canvas")
 		canvas.width = img.width;
 		canvas.height = img.height;
+
 		var ctx = canvas.getContext("2d");
+		ctx.filter = 'saturate(.66) brightness(1.1) contrast(1.1)';
 		ctx.drawImage(img, 0, 0);
+		ctx.filter = '';
+
+		var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		var imageBuffer = imageData.data;
+		// loop though image buffer, sequenced as RGBA
+		for (var i = 0, len = imageBuffer.length, val; i < len; i += 4) {
+			// Increase contrast
+			//imageBuffer[i] = imageBuffer[i] *
+			// Reads the Blue channel and writes to Alpha channel
+			val = imageBuffer[i + 2];
+			if (val <= 217)
+				imageBuffer[i + 3] = 0xff;
+			else if (val >= 230)
+				imageBuffer[i + 3] = 0;
+			else
+				imageBuffer[i + 3] = (val - 217) / (230 - 217) * 0xff;
+		}
+
+		// clears the canvas and redraw
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.putImageData(imageData, 0, 0);
+
 		var base64 = canvas.toDataURL("image/png");
 
 		$('#source').attr('value', base64);
